@@ -140,12 +140,25 @@ def in_velocity_obstacle(rel_velocity: np.ndarray, vo: VelocityObstacle) -> bool
     if not inside_cone:
         return False
 
-    # Ray-circle intersection
+    """
+    We can treat collision checking as a ray-circle intersection problem.
+
+    Ray: x(t) = t * d, where t is time horizon and d is the unit distance vector
+
+    We plug this into the circle equation to determine the time t where they intersect:
+    - Any point on the circle's border must satisfy the equation: (p - c) dot (p - c) = r^2, where p is the point
+    - We substitute the ray equation for the point p: ((td) - c) dot ((td) - c) = r^2
+
+    Expanding this gives us a standard quadratic equation in terms of t
+    """
     center_projection = float(np.dot(direction, collision_center_velocity))
     center_distance_sq = float(np.dot(collision_center_velocity, collision_center_velocity))
+
+    # Term under the square root: Negative means ray missed, positive means ray collided
     discriminant = center_projection**2 - (center_distance_sq - collision_radius**2)
     if discriminant < -_EPSILON:
         return False
 
-    intersection = center_projection - float(np.sqrt(max(0.0, discriminant)))
-    return speed + _EPSILON >= intersection
+    # Taking the smaller term gives us the closer intersect (ray passes through two points in circle)
+    first_intersection = center_projection - float(np.sqrt(max(0.0, discriminant)))
+    return speed + _EPSILON >= first_intersection     # reached OR passed boundary
