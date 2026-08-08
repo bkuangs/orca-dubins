@@ -1,7 +1,7 @@
 """
 Velocity Obstacle (VO) construction.
 
-A velocity obstacle ``VO_{A|B}`` is the set of relative velocities of A w.r.t. B
+A velocity obstacle is the set of relative velocities of A w.r.t. B (v_A - v_B)
 that lead to a collision within some time horizon. It is the geometric
 primitive underneath ORCA's reciprocal half-planes.
 """
@@ -22,10 +22,6 @@ def _cross_2d(a: np.ndarray, b: np.ndarray) -> float:
 
 @dataclass
 class VelocityObstacle:
-    """
-    Truncated velocity obstacle between two disc agents.
-    """
-
     apex: np.ndarray
     left_leg: np.ndarray
     right_leg: np.ndarray
@@ -40,12 +36,13 @@ def velocity_obstacle(
     combined_radius: float,
     time_horizon: float,
 ) -> VelocityObstacle:
-    """Construct the (truncated) velocity obstacle for one neighbour.
+    """
+    Construct the velocity obstacle for one neighbor, truncated by time horizon.
 
     Parameters
     ----------
     rel_position:
-        Position of the neighbour relative to ego (``p_B - p_A``).
+        Position of the neighbor relative to ego (``p_B - p_A``).
     combined_radius:
         ``r_A + r_B``.
     time_horizon:
@@ -117,7 +114,7 @@ def in_velocity_obstacle(rel_velocity: np.ndarray, vo: VelocityObstacle) -> bool
     Test whether a relative velocity lies inside a velocity obstacle.
     """
     if vo.truncation_center is None or vo.truncation_radius is None:
-        raise ValueError(""Can't generate a collision cone without center and/or radius"")
+        raise ValueError("Can't generate a collision cone without center and/or radius")
 
     rel_velocity = np.asarray(rel_velocity, dtype=float)
     collision_center_velocity = vo.truncation_center
