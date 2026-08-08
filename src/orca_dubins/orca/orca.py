@@ -1,12 +1,12 @@
 """
-ORCA half-planes and the safe-velocity set.
+ORCA half-planes and the safe velocity set.
 
 ORCA turns each neighbor's VO into a half plane constraint on the ego velocity. The intersection
-of these half-planes is the ORCA-safe velocity set
+of these half-planes is the safe velocity set.
 
-    V_ORCA-safe = { v : v satisfies every neighbor's ORCA half-plane }.
+The planners then choose a velocity from this set, intersected with the Dubins-reachable set.
 
-The planners then choose ``v*`` from this set (intersected with the Dubins-reachable set). 
+TODO: We must account for scenarios where the agents are already overlapping.
 """
 
 from __future__ import annotations
@@ -23,10 +23,15 @@ _EPSILON = 1e-12
 @dataclass
 class HalfPlane:
     """
-    A linear velocity constraint ``(v - point) . normal >= 0``.
+    A half plane can be fully described by a point and normal vector!
 
-    ``point`` lies on the boundary line and ``normal`` points into the feasible
-    (collision-free) side.
+    The boundary is the set of all points that satisfy: (x - p) dot n = 0. Why? 
+    - Any point lying ON the boundary will be perpendicular to the normal
+    - Given a point on the line `x`, (x - p) dot n = 0, by definition of being perpendicular
+
+    Therefore, we can define a half plane by setting a constraint on the boundary line:
+    - Half plane into where the normal points: (x - p) dot n >= 0
+    - Other side: (x - p) dot n <= 0
     """
 
     point: np.ndarray
@@ -64,7 +69,10 @@ def orca_half_plane(
     only half (by default) of `u`, so the half plane edge is at half the distance to the VO boundary.
     """
     if time_horizon <= 0:
-        raise ValueError("No time horizon")
+        raise ValueError("Invalid time horizon.")
+
+    if responsibility <= 0 or responsibility >= 1:
+        raise ValueError("Cannot run ORCA without shared responsibility.")
     
     rel_position = neighbor.state.position - ego.state.position
     combined_radius = ego.params.radius + neighbor.params.radius
@@ -109,7 +117,7 @@ def orca_half_plane(
     )
 
     if cap_is_valid:
-        u_vectors.append(u_cap, n_cap)
+        u_vectors.append((u_cap, n_cap))
 
     """
     Projecting onto cone legs is much more straightforward, as they are just rays. However,
@@ -131,7 +139,7 @@ def orca_half_plane(
     u_left = q_left - v                                  # `u` is the shortest vector between leg and rel_velocity
     n_left = np.array([-vo.left_leg[1], vo.left_leg[0]])
     if t_left >= tangent_distance: 
-        u_vectors.append(u_left, n_left)
+        u_vectors.append((u_left, n_left))
 
     # Right leg projection
     t_right = np.dot(v, vo.right_leg)
@@ -139,7 +147,7 @@ def orca_half_plane(
     u_right = q_right - v
     n_right = np.array([vo.right_leg[1], -vo.right_leg[0]])
     if t_right >= tangent_distance: 
-        u_vectors.append(u_right, n_right)
+        u_vectors.append((u_right, n_right))
 
     # Get the valid candidate with the smallest correction vector
     u, n = min(
@@ -161,11 +169,10 @@ def orca_safe_velocities(
     responsibility: float = 0.5,
 ) -> list[HalfPlane]:
     """
-    Return the ORCA half-plane constraints defining ``V_ORCA-safe`` for ego.
+    Return the ORCA half-plane constraints for ego.
 
     The safe set is the intersection of the returned half-planes. Selecting the
-    optimal feasible velocity from that intersection (the classic ORCA linear
-    program) is the planners' job.
+    optimal feasible velocity from that intersection is the planners' job.
     """
     half_planes = []
 
@@ -184,7 +191,17 @@ def satisfies_half_planes(
     """
     Check whether a velocity satisfies every ORCA half-plane.
 
-    Useful for the control-primitive planner, which tests discrete candidate
-    velocities against ``V_ORCA-safe`` rather than solving an LP.
+    The normal vector points towards the feasible side, so we reject
+    negative dot products.
     """
+    for half_plane in half_planes:
+        signed_distance = float(
+            np.dot(
+                velocity - half_plane.point,
+                half_plane.normal,
+            )
+        )
+        if signed_distance < -tolerance:
+            return False
 
+    return True
