@@ -1,7 +1,7 @@
 """
 Velocity Obstacle (VO) construction.
 
-A velocity obstacle is the set of relative velocities of A w.r.t. B (v_A - v_B)
+A velocity obstacle is the set of relative velocities of A wrt B (v_A - v_B)
 that lead to a collision within some time horizon. It is the geometric
 primitive underneath ORCA's reciprocal half-planes.
 """
@@ -38,25 +38,6 @@ def velocity_obstacle(
 ) -> VelocityObstacle:
     """
     Construct the velocity obstacle for one neighbor, truncated by time horizon.
-
-    Parameters
-    ----------
-    rel_position:
-        Position of the neighbor relative to ego (``p_B - p_A``).
-    combined_radius:
-        ``r_A + r_B``.
-    time_horizon:
-        Planning horizon ``tau`` over which collisions are considered.
-
-    Returns
-    -------
-    VelocityObstacle
-
-    Notes
-    -----
-    Uses the convention ``rel_velocity = v_A - v_B``. With
-    ``rel_position = p_B - p_A``, unsafe velocities point roughly toward
-    ``rel_position``.
     """
     rel_position = np.asarray(rel_position, dtype=float)
 
@@ -93,8 +74,8 @@ def velocity_obstacle(
 ----------+----------> x
           θ
 
-        Similarly, following give us unit vectors at angle left_angle, right_angle.
-        These are the tangent edges around the collision cone
+        The following give us unit direction vectors at angle left_angle, right_angle.
+        These point along the left and right tangent legs of the collision cone.
         """
         left_leg = np.array([np.cos(left_angle), np.sin(left_angle)])           # unit vector along circle
         right_leg = np.array([np.cos(right_angle), np.sin(right_angle)])
