@@ -71,8 +71,8 @@ def orca_half_plane(
     if time_horizon <= 0:
         raise ValueError("Invalid time horizon.")
 
-    if responsibility <= 0 or responsibility >= 1:
-        raise ValueError("Cannot run ORCA without shared responsibility.")
+    if responsibility < 0 or responsibility > 1:
+        raise ValueError("Invalid responsibility.")
     
     rel_position = neighbor.state.position - ego.state.position
     combined_radius = ego.params.radius + neighbor.params.radius
@@ -177,7 +177,8 @@ def orca_safe_velocities(
     half_planes = []
 
     for neighbor in neighbors:
-        half_plane = orca_half_plane(ego=ego, neighbor=neighbor, time_horizon=time_horizon, responsibility=responsibility)
+        half_plane = orca_half_plane(ego=ego, neighbor=neighbor, 
+                                     time_horizon=time_horizon, responsibility=responsibility)
         half_planes.append(half_plane)
 
     return half_planes
