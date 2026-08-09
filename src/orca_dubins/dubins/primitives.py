@@ -1,12 +1,11 @@
 """
 Dubins paths, control primitives, and Dubins-reachable velocity set.
 
-Two things live here:
-1. Baseline Dubins paths, useful for the projection baseline
-2. The discretized control primitive generator: a small fan of maneuvers:
-   max-left, moderate-left, straight, moderate-right, max-right
+We experiment with two separate approaches here:
+1. Discrete control primitives for first-pass validation
+2. Real Dubins paths for real, continuous optimization
 
-We also declare the Dubins-reachable velocity set over a time horizon: the 
+For the second method, we declare the Dubins-reachable velocity set over a time horizon: the 
 arc of headings the aircraft can actually reach given its turn rate limit.
 """
 
@@ -20,9 +19,7 @@ from ..types import AircraftParams, AircraftState
 from ..dynamics import integrate, max_turn_rate
 
 
-# --------------------------------------------------------------------------- #
-# Discrete control primitives
-# --------------------------------------------------------------------------- #
+# -------------------- Discrete control primitives --------------------
 @dataclass
 class ControlPrimitive:
     """
@@ -37,7 +34,7 @@ class ControlPrimitive:
 class PropagatedPrimitive:
     """
     A control command and the predicted result of executing it -> "What will happen after this primitive is applied?"
-    
+
     ControlPrimitive
         "moderate_left", +ω/2
                 │
@@ -102,16 +99,17 @@ def propagate_primitive(
     dt: float,
 ) -> PropagatedPrimitive:
     """
-    Repeatedly appliy one constant turn rate over the horizon.
+    Repeatedly apply one constant turn rate over the horizon.
 
     This function will repeatedly evolve (position, heading), which define an AircraftState. 
-    State updates evolve according to two equations:
+
+    States update according to two equations:
     - psi_dot = turn_rate (of primitive)
     - p_dot   = v * Vec2(cos(psi), sin(psi)) where v is velocity
 
     We record each intermediate state and compute the terminal velocity from the final heading.
 
-    The resulting states array forms a curved trajectory
+    The resulting states array forms a curved trajectory.
     """
     if horizon <= 0:
         raise ValueError("horizon must be positive")
@@ -153,9 +151,7 @@ def propagate_primitive(
     )
 
 
-# --------------------------------------------------------------------------- #
-# Dubins-reachable velocity set (kinodynamic ORCA)
-# --------------------------------------------------------------------------- #
+# ------------------ Dubins-reachable velocity set ------------------
 def dubins_reachable_velocities(
     state: AircraftState,
     params: AircraftParams,
@@ -176,9 +172,7 @@ def dubins_reachable_velocities(
     )
 
 
-# --------------------------------------------------------------------------- #
-# Classic Dubins shortest path (projection baseline)
-# --------------------------------------------------------------------------- #
+# ------------------   Classic Dubins shortest path ------------------ 
 @dataclass
 class DubinsPath:
     """Shortest constant-curvature path between two oriented configurations."""
