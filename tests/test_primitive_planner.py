@@ -74,3 +74,22 @@ def test_planner_rejects_horizon_shorter_than_control_timestep():
             horizon=0.05,
             dt=0.1,
         )
+
+
+def test_swarm_circle_continues_when_agents_begin_to_overlap():
+    agents = SCENARIOS["swarm_circle"]()
+    world = World(
+        agents=agents,
+        planner=PrimitiveOrcaPlanner(),
+        dt=0.1,
+        horizon=3.0,
+    )
+
+    history = world.run(300)
+
+    assert len(history) == 301
+    assert all(
+        np.all(np.isfinite(position))
+        for snapshot in history
+        for position in snapshot.positions.values()
+    )

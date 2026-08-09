@@ -5,8 +5,6 @@ ORCA turns each neighbor's VO into a half plane constraint on the ego velocity. 
 of these half-planes is the safe velocity set.
 
 The planners then choose a velocity from this set, intersected with the Dubins-reachable set.
-
-TODO: We must account for scenarios where the agents are already overlapping.
 """
 
 from __future__ import annotations
@@ -43,6 +41,7 @@ def orca_half_plane(
     neighbor: Agent,
     time_horizon: float,
     responsibility: float = 0.5,
+    time_step: float | None = None,
 ) -> HalfPlane:
     """
     Build the ORCA half-plane that ego must respect for one neighbor.
@@ -73,9 +72,42 @@ def orca_half_plane(
 
     if responsibility < 0 or responsibility > 1:
         raise ValueError("Invalid responsibility.")
+    if time_step is not None and time_step <= 0:
+        raise ValueError("Invalid time step.")
     
     rel_position = neighbor.state.position - ego.state.position
     combined_radius = ego.params.radius + neighbor.params.radius
+    distance = float(np.linalg.norm(rel_position))
+
+    ego_velocity = ego.state.velocity(ego.params.speed)
+    neighbor_velocity = neighbor.state.velocity(neighbor.params.speed)
+    v = ego_velocity - neighbor_velocity
+
+    # Once the collision discs overlap, the ordinary cone has no real tangent
+    # legs. Standard ORCA instead asks for separation within one control step
+    # and projects relative velocity onto that emergency velocity circle.
+    if distance <= combined_radius:
+        if time_step is None:
+            raise ValueError("time_step is required when agents overlap")
+
+        c = rel_position / time_step
+        r = combined_radius / time_step
+        w = v - c
+        w_length = float(np.linalg.norm(w))
+
+        if w_length > _EPSILON:
+            normal = w / w_length
+        elif distance > _EPSILON:
+            normal = -rel_position / distance
+        else:
+            # Identical positions have no geometric separation direction.
+            # Opposite ID ordering gives the pair opposite deterministic normals.
+            normal = np.array([1.0, 0.0]) if ego.id < neighbor.id else np.array([-1.0, 0.0])
+
+        u = (r - w_length) * normal
+        point = ego_velocity + responsibility * u
+        return HalfPlane(point=point, normal=normal)
+
     vo = velocity_obstacle(rel_position, combined_radius, time_horizon)
 
     """
@@ -85,7 +117,6 @@ def orca_half_plane(
     - Finally, subtracting the two guarantees the shortest vector between them
     """
 
-    v = ego.state.velocity(ego.params.speed) - neighbor.state.velocity(neighbor.params.speed)     # rel_velocity
     c = vo.truncation_center
     r = vo.truncation_radius
 
@@ -156,7 +187,6 @@ def orca_half_plane(
     )
 
     # Apply the change in velocity vector to build the half plane
-    ego_velocity = ego.state.velocity(ego.params.speed)
     p = ego_velocity + responsibility * u
 
     return HalfPlane(point=p, normal=n)
@@ -167,6 +197,7 @@ def orca_safe_velocities(
     neighbors: list[Agent],
     time_horizon: float,
     responsibility: float = 0.5,
+    time_step: float | None = None,
 ) -> list[HalfPlane]:
     """
     Return the ORCA half-plane constraints for ego.
@@ -177,8 +208,13 @@ def orca_safe_velocities(
     half_planes = []
 
     for neighbor in neighbors:
-        half_plane = orca_half_plane(ego=ego, neighbor=neighbor, 
-                                     time_horizon=time_horizon, responsibility=responsibility)
+        half_plane = orca_half_plane(
+            ego=ego,
+            neighbor=neighbor,
+            time_horizon=time_horizon,
+            responsibility=responsibility,
+            time_step=time_step,
+        )
         half_planes.append(half_plane)
 
     return half_planes

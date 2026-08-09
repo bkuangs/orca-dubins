@@ -51,7 +51,7 @@ class PropagatedPrimitive:
     end_velocity: np.ndarray
 
 
-def generate_primitives(params: AircraftParams, n: int = 5) -> list[ControlPrimitive]:
+def generate_primitives(params: AircraftParams, n: int = 9) -> list[ControlPrimitive]:
     """
     Generate a symmetric fan of turn-rate primitives within the turn limit.
 

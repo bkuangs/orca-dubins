@@ -200,6 +200,19 @@ def test_half_plane_accepts_responsibility_interval_endpoints(
     assert isinstance(half_plane, HalfPlane)
 
 
-@pytest.mark.skip(reason="Overlap handling needs a simulation time-step API and policy.")
 def test_overlapping_agents_receive_an_emergency_separation_constraint():
-    """Pending specification for the overlap branch."""
+    ego = _agent("A", vec2(0.0, 0.0), vec2(1.0, 0.0), radius=0.5)
+    neighbor = _agent("B", vec2(0.75, 0.0), vec2(-1.0, 0.0), radius=0.5)
+
+    half_plane = orca_half_plane(
+        ego,
+        neighbor,
+        time_horizon=5.0,
+        responsibility=0.5,
+        time_step=0.1,
+    )
+
+    assert np.all(np.isfinite(half_plane.point))
+    assert np.all(np.isfinite(half_plane.normal))
+    assert np.linalg.norm(half_plane.normal) == pytest.approx(1.0)
+    assert satisfies_half_planes(half_plane.point + half_plane.normal, [half_plane])
