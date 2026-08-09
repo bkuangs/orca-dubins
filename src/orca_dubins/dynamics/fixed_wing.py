@@ -1,12 +1,10 @@
-"""Fixed-wing kinematics helpers.
+"""
+Fixed-wing kinematics helpers.
 
-This module provides the *simulation substrate* — the constant-speed unicycle /
-coordinated-turn integration used to move aircraft forward in time — plus small
-helpers to convert bank-angle limits into turn-rate limits.
+Contains the base layer dynamics (constant speed, coordinated turns) to move 
+aircraft forward in time, plus small helpers to convert bank-angle limits into turn-rate limits.
 
-The collision-avoidance *algorithms* live in :mod:`orca_dubins.orca`,
-:mod:`orca_dubins.dubins` and :mod:`orca_dubins.planners`; this module is
-deliberately algorithm-free so the harness can run end-to-end.
+Algorithm-free so the harness can run end-to-end.
 """
 
 from __future__ import annotations
@@ -38,7 +36,8 @@ def integrate(
     speed: float,
     dt: float,
 ) -> AircraftState:
-    """Advance a constant-speed aircraft by ``dt`` under a commanded turn rate.
+    """
+    Advance a constant-speed aircraft by `dt` under a commanded turn rate.
 
     Uses an exact arc integration for a constant turn rate (falls back to a
     straight segment as ``turn_rate -> 0``). This is plain kinematics, not an

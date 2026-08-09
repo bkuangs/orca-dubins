@@ -1,17 +1,13 @@
-"""Dubins paths, control primitives and the Dubins-reachable velocity set.
+"""
+Dubins paths, control primitives, and Dubins-reachable velocity set.
 
-Two things live here, both ALGORITHM STUBS:
+Two things live here:
+1. Baseline Dubins paths, useful for the projection baseline
+2. The discretized control primitive generator: a small fan of maneuvers:
+   max-left, moderate-left, straight, moderate-right, max-right
 
-1. Classic Dubins-path machinery (shortest constant-curvature path between two
-   oriented configurations), useful for the projection-style baseline.
-2. The discrete *control-primitive* generator used by the practical planner:
-   a small fan of maneuvers (max-left, moderate-left, straight, moderate-right,
-   max-right) propagated over a short horizon.
-
-Also declared here is the notion of the *Dubins-reachable velocity set*
-``V_Dubins-reachable`` over a horizon ``T_h`` — the arc of headings the aircraft
-can actually reach given its turn-rate limit — which the kinodynamic ORCA
-planner intersects with ``V_ORCA-safe``.
+We also declare the Dubins-reachable velocity set over a time horizon: the 
+arc of headings the aircraft can actually reach given its turn rate limit.
 """
 
 from __future__ import annotations
@@ -21,21 +17,16 @@ from dataclasses import dataclass
 import numpy as np
 
 from ..types import AircraftParams, AircraftState
+from ..dynamics import integrate, max_turn_rate
 
 
 # --------------------------------------------------------------------------- #
-# Discrete control primitives (practical planner)
+# Discrete control primitives
 # --------------------------------------------------------------------------- #
 @dataclass
 class ControlPrimitive:
-    """A short, fixed maneuver the aircraft can commit to for one horizon.
-
-    Attributes
-    ----------
-    name:
-        Human-readable label, e.g. ``"max_left"``, ``"straight"``.
-    turn_rate:
-        Commanded (constant) yaw rate for the primitive (rad/s).
+    """
+    A short, fixed control command over one time horizon -> "What maneuver should the aircraft apply?"
     """
 
     name: str
@@ -44,7 +35,19 @@ class ControlPrimitive:
 
 @dataclass
 class PropagatedPrimitive:
-    """A control primitive together with its predicted rollout."""
+    """
+    A control command and the predicted result of executing it -> "What will happen after this primitive is applied?"
+    
+    ControlPrimitive
+        "moderate_left", +ω/2
+                │
+                │ propagate over horizon
+                ▼
+    PropagatedPrimitive
+        primitive: moderate_left
+        states:    [state₀, state₁, ..., state_final]
+        end_velocity: v_final
+    """
 
     primitive: ControlPrimitive
     states: list[AircraftState]
@@ -52,16 +55,43 @@ class PropagatedPrimitive:
 
 
 def generate_primitives(params: AircraftParams, n: int = 5) -> list[ControlPrimitive]:
-    """Generate a symmetric fan of turn-rate primitives within the turn limit.
-
-    Intended default is ``[max_left, moderate_left, straight, moderate_right,
-    max_right]``. Should respect ``max_turn_rate(params)``.
-
-    ALGORITHM STUB — not implemented yet.
     """
-    raise NotImplementedError(
-        "generate_primitives: build the discrete maneuver fan — not implemented yet."
-    )
+    Generate a symmetric fan of turn-rate primitives within the turn limit.
+    """
+    # Positive rate is left; negative rate is right.
+    if n < 3:
+        raise ValueError("n must be at least 3")
+    if n % 2 == 0:
+        raise ValueError("n must be odd so the fan includes straight flight")
+    if params.speed <= 0:
+        raise ValueError("speed must be positive")
+
+    rate_limit = float(max_turn_rate(params))
+
+    turn_rates = np.linspace(rate_limit, -rate_limit, n)
+    middle = n // 2
+
+    primitives = []
+    for index, turn_rate in enumerate(turn_rates):
+        if index == 0:
+            name = "max_left"
+        elif index == n - 1:
+            name = "max_right"
+        elif index == middle:
+            name = "straight"
+        elif index < middle:
+            name = f"left_{index}"
+        else:
+            name = f"right_{n - 1 - index}"
+
+        primitives.append(
+            ControlPrimitive(
+                name=name,
+                turn_rate=float(turn_rate),
+            )
+        )
+
+    return primitives
 
 
 def propagate_primitive(
@@ -71,14 +101,55 @@ def propagate_primitive(
     horizon: float,
     dt: float,
 ) -> PropagatedPrimitive:
-    """Roll a primitive forward over ``horizon`` and return the trajectory.
-
-    ALGORITHM STUB — not implemented yet. (Note: forward kinematics itself is
-    available in :mod:`orca_dubins.dynamics`; this wrapper collects the rollout
-    and end velocity for evaluation against ORCA constraints.)
     """
-    raise NotImplementedError(
-        "propagate_primitive: roll out a primitive over the horizon — not implemented yet."
+    Repeatedly appliy one constant turn rate over the horizon.
+
+    This function will repeatedly evolve (position, heading), which define an AircraftState. 
+    State updates evolve according to two equations:
+    - psi_dot = turn_rate (of primitive)
+    - p_dot   = v * Vec2(cos(psi), sin(psi)) where v is velocity
+
+    We record each intermediate state and compute the terminal velocity from the final heading.
+
+    The resulting states array forms a curved trajectory
+    """
+    if horizon <= 0:
+        raise ValueError("horizon must be positive")
+    if dt <= 0:
+        raise ValueError("dt must be positive")
+    if params.speed <= 0:
+        raise ValueError("speed must be positive")
+
+    rate_limit = float(max_turn_rate(params))
+    if abs(primitive.turn_rate) > rate_limit + 1e-12:
+        raise ValueError("primitive turn rate exceeds aircraft limit")
+
+    current = AircraftState(
+        position=state.position.copy(),     # don't mutate original
+        heading=state.heading
+    )
+    states = [current]
+    elapsed = 0.0
+
+    while elapsed < horizon:
+        step = min(dt, horizon - elapsed)   # prevent under/overshooting the time horizon
+
+        current = integrate(
+            state=current,
+            turn_rate=primitive.turn_rate,
+            speed=params.speed,
+            dt=step
+        )
+
+        states.append(current)
+        elapsed += step
+
+    end_velocity = current.velocity(params.speed)
+
+    return PropagatedPrimitive(
+        primitive=primitive,
+        states=states,
+        end_velocity=end_velocity
     )
 
 
@@ -90,7 +161,8 @@ def dubins_reachable_velocities(
     params: AircraftParams,
     horizon: float,
 ) -> object:
-    """Describe ``V_Dubins-reachable`` over ``T_h = horizon``.
+    """
+    Describe ``V_Dubins-reachable`` over ``T_h = horizon``.
 
     Conceptually the arc of velocity vectors (constant speed, heading within the
     reachable turn range) attainable within the horizon. Return type is left
