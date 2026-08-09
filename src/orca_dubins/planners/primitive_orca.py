@@ -22,6 +22,7 @@ from .base import AvoidancePlanner
 from ..dubins import generate_primitives, propagate_primitive, PropagatedPrimitive
 from ..orca import orca_safe_velocities, satisfies_half_planes, HalfPlane
 
+
 class PrimitiveOrcaPlanner(AvoidancePlanner):
     """
     Select the best ORCA-feasible maneuver from a set of discrete primitives.
@@ -35,7 +36,7 @@ class PrimitiveOrcaPlanner(AvoidancePlanner):
 
     @staticmethod   # method that doesn't modify itself, so don't need to pass in `self` arg
     def aggregate_violation(
-        trajectories: PropagatedPrimitive, 
+        trajectory: PropagatedPrimitive,
         half_planes: list[HalfPlane]
     ) -> float:
         """
@@ -50,7 +51,7 @@ class PrimitiveOrcaPlanner(AvoidancePlanner):
         for half_plane in half_planes:
             margin = float(
                 np.dot(
-                    trajectories.end_velocity - half_plane.point,
+                    trajectory.end_velocity - half_plane.point,
                     half_plane.normal,
                 )
             )
@@ -62,7 +63,7 @@ class PrimitiveOrcaPlanner(AvoidancePlanner):
     def compute_velocity(
         self,
         ego: Agent,
-        neighbors: list[Agent],
+        neighbours: list[Agent],
         v_pref: np.ndarray,
         horizon: float,
         dt: float,
@@ -72,10 +73,22 @@ class PrimitiveOrcaPlanner(AvoidancePlanner):
         compute safe velocities to enable collision avoidance!
 
         A velocity is globally ORCA-safe only if it satisfies ALL neighboring half planes.
+
+        Candidate maneuvers are ranked using their terminal velocities. The returned
+        velocity points along the selected primitive after one control timestep, so
+        the simulation's velocity tracker executes that primitive's turn rate now.
         """
 
+        if horizon < dt:
+            raise ValueError("horizon must be at least one control timestep")
+
         primitives = generate_primitives(ego.params, self.n_primitives)
-        half_planes = orca_safe_velocities(ego, neighbors, horizon, self.responsibility)
+        half_planes = orca_safe_velocities(
+            ego,
+            neighbours,
+            horizon,
+            self.responsibility,
+        )
 
         trajectories = []
         feasible = []
@@ -95,10 +108,13 @@ class PrimitiveOrcaPlanner(AvoidancePlanner):
         else:
             best = min(
                 trajectories,
-                key=lambda trajectories: (
-                    self.aggregate_violation(trajectories, half_planes),
-                    np.linalg.norm(trajectories.end_velocity - v_pref),
+                key=lambda trajectory: (
+                    self.aggregate_violation(trajectory, half_planes),
+                    np.linalg.norm(trajectory.end_velocity - v_pref),
                 ),
             )
 
-        return best.end_velocity
+        # The planner interface returns a velocity command. Using the first
+        # propagated state makes World.steer_toward_velocity recover the exact
+        # constant turn rate selected by this primitive for the current step.
+        return best.states[1].velocity(ego.params.speed)

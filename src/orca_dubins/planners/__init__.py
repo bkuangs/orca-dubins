@@ -3,7 +3,7 @@
 * :class:`AvoidancePlanner` — common interface.
 * :class:`PreferredVelocityPlanner` — runnable no-avoidance baseline.
 * :class:`ReachableOrcaPlanner` — kinodynamic ORCA over the reachable set (stub).
-* :class:`PrimitiveOrcaPlanner` — discrete control-primitive planner (stub).
+* :class:`PrimitiveOrcaPlanner` — runnable discrete control-primitive planner.
 """
 
 from .base import AvoidancePlanner

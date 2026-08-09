@@ -1,8 +1,7 @@
-"""Smoke tests: verify the harness runs and the algorithm stubs are wired up.
+"""
+Smoke tests for the simulation harness and remaining algorithm stubs.
 
-These do NOT test avoidance behaviour (unimplemented); they confirm the
-scaffold imports, simulates and visualises, and that the stub planners raise
-``NotImplementedError`` as expected.
+Avoidance behavior is covered by focused ORCA and primitive-planner tests.
 """
 
 from __future__ import annotations
@@ -13,7 +12,6 @@ import pytest
 from orca_dubins.dynamics import integrate, max_turn_rate
 from orca_dubins.planners import (
     PreferredVelocityPlanner,
-    PrimitiveOrcaPlanner,
     ReachableOrcaPlanner,
 )
 from orca_dubins.simulation import SCENARIOS, World
@@ -45,9 +43,14 @@ def test_baseline_world_runs():
             assert pos.shape == (2,)
 
 
-@pytest.mark.parametrize("planner", [ReachableOrcaPlanner(), PrimitiveOrcaPlanner()])
-def test_stub_planners_not_implemented(planner):
+def test_reachable_orca_planner_not_implemented():
     agents = SCENARIOS["crossing"]()
     ego, *neighbors = agents
     with pytest.raises(NotImplementedError):
-        planner.compute_velocity(ego, neighbors, ego.preferred_velocity(), 3.0, 0.1)
+        ReachableOrcaPlanner().compute_velocity(
+            ego,
+            neighbors,
+            ego.preferred_velocity(),
+            3.0,
+            0.1,
+        )

@@ -1,13 +1,11 @@
-"""End-to-end demo: run a scenario with the no-avoidance baseline and visualise.
+"""End-to-end demo: run and visualise a selected planner and scenario.
 
-This exercises the full harness (types -> scenario -> world -> dynamics -> viz)
-*without* any avoidance algorithm, so you can confirm the scaffold works before
-implementing ORCA/Dubins. Swap in ``ReachableOrcaPlanner`` or
-``PrimitiveOrcaPlanner`` once their ``compute_velocity`` is implemented.
+Use the preferred-velocity planner as a no-avoidance baseline or the discrete
+primitive ORCA planner for collision avoidance.
 
 Usage
 -----
-    uv run python examples/run_demo.py --scenario crossing --steps 200 --show
+    uv run python examples/run_demo.py --planner primitive_orca --scenario crossing --steps 200 --show
     uv run python examples/run_demo.py --scenario swarm_circle --save out.gif
 """
 
@@ -17,13 +15,18 @@ import argparse
 
 import matplotlib.pyplot as plt
 
-from orca_dubins.planners import PreferredVelocityPlanner
+from orca_dubins.planners import PreferredVelocityPlanner, PrimitiveOrcaPlanner
 from orca_dubins.simulation import SCENARIOS, World
 from orca_dubins.viz import animate, plot_trajectories
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--planner",
+        choices=("preferred", "primitive_orca"),
+        default="preferred",
+    )
     parser.add_argument("--scenario", choices=sorted(SCENARIOS), default="crossing")
     parser.add_argument("--steps", type=int, default=200)
     parser.add_argument("--dt", type=float, default=0.1)
@@ -34,16 +37,20 @@ def main() -> None:
     args = parser.parse_args()
 
     agents = SCENARIOS[args.scenario]()
-    # NOTE: PreferredVelocityPlanner does NO avoidance — expect collisions.
-    world = World(agents=agents, planner=PreferredVelocityPlanner(), dt=args.dt, horizon=args.horizon)
+    planners = {
+        "preferred": PreferredVelocityPlanner(),
+        "primitive_orca": PrimitiveOrcaPlanner(),
+    }
+    planner = planners[args.planner]
+    world = World(agents=agents, planner=planner, dt=args.dt, horizon=args.horizon)
     world.run(args.steps)
 
     radius = {a.id: a.params.radius for a in agents}
 
     if args.static:
-        plot_trajectories(world.history, agents=agents, title=f"{args.scenario} (baseline)")
+        plot_trajectories(world.history, agents=agents, title=f"{args.scenario} ({planner.name})")
     else:
-        anim = animate(world.history, agents=agents, radius=radius, title=f"{args.scenario} (baseline)")
+        anim = animate(world.history, agents=agents, radius=radius, title=f"{args.scenario} ({planner.name})")
         if args.save:
             anim.save(args.save)
             print(f"saved animation to {args.save}")

@@ -35,12 +35,11 @@ Requires Python ≥ 3.11 and [uv](https://docs.astral.sh/uv/):
 uv sync --extra dev          # create venv + install deps
 uv run pytest                # smoke tests
 uv run python examples/run_demo.py --scenario crossing --show
+uv run python examples/run_demo.py --planner primitive_orca --scenario crossing --show
 ```
 
-The demo uses the **no-avoidance baseline**, so aircraft will fly straight
-through each other — that's expected until a real planner is implemented. Swap
-in `ReachableOrcaPlanner` / `PrimitiveOrcaPlanner` once their `compute_velocity`
-is written.
+The default demo uses the **no-avoidance baseline**, so aircraft fly through
+each other. Pass `--planner primitive_orca` to run discrete avoidance.
 
 ## Layout
 
@@ -54,10 +53,10 @@ is written.
 
 ## Roadmap
 
-- [ ] Velocity obstacles + ORCA half-planes
+- [x] Velocity obstacles + ORCA half-planes
 - [ ] Dubins reachable arc over `T_h`
-- [ ] Control-primitive generation + rollout
+- [x] Control-primitive generation + rollout
 - [ ] `ReachableOrcaPlanner.compute_velocity`
-- [ ] `PrimitiveOrcaPlanner.compute_velocity`
+- [x] `PrimitiveOrcaPlanner.compute_velocity`
 - [ ] Metrics (min separation, collisions, path efficiency)
 - [ ] 3D extension (altitude / climb-rate)
