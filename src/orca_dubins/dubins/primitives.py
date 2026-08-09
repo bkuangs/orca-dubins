@@ -54,6 +54,14 @@ class PropagatedPrimitive:
 def generate_primitives(params: AircraftParams, n: int = 5) -> list[ControlPrimitive]:
     """
     Generate a symmetric fan of turn-rate primitives within the turn limit.
+
+    "Symmetric fan" gives the aircraft several dynamic possible ways to turn, with
+    matching left and right commands.
+
+    More primitives: better coverage, more computation.
+    Fewer primitives: faster, but may miss a narrow safe maneuver.  
+
+    Importantly, there should be an odd number of primitives. We will start with 5.
     """
     # Positive rate is left; negative rate is right.
     if n < 3:

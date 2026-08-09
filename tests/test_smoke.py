@@ -48,6 +48,6 @@ def test_baseline_world_runs():
 @pytest.mark.parametrize("planner", [ReachableOrcaPlanner(), PrimitiveOrcaPlanner()])
 def test_stub_planners_not_implemented(planner):
     agents = SCENARIOS["crossing"]()
-    ego, *neighbours = agents
+    ego, *neighbors = agents
     with pytest.raises(NotImplementedError):
-        planner.compute_velocity(ego, neighbours, ego.preferred_velocity(), 3.0, 0.1)
+        planner.compute_velocity(ego, neighbors, ego.preferred_velocity(), 3.0, 0.1)

@@ -1,19 +1,16 @@
-"""Discrete control-primitive avoidance planner — ALGORITHM STUB.
+"""
+Discrete, control primitive collision avoidance planner.
 
-The practical strategy: don't continuously optimise over the reachable velocity
-set. Instead:
+We are NOT continuously optimizing over the reachable velocity sets yet. Instead:
 
-1. Generate a small set of Dubins/control primitives (max-left, moderate-left,
+1. Generate a small set of Dubins/control primitives (e.g. max-left, moderate-left,
    straight, moderate-right, max-right).
-2. Propagate each forward over a short horizon ``T_h`` under the fixed-wing
-   dynamics.
-3. Evaluate each rollout against ORCA's collision constraints
-   (``V_ORCA-safe``).
+2. Propagate each forward over a short horizon under fixed-wing dynamics.
+3. Evaluate each rollout against ORCA's collision constraints.
 4. Select the *feasible* maneuver whose resulting velocity is closest to the
-   preferred mission velocity ``v_pref``.
+   preferred mission velocity.
 
-Every primitive is Dubins-feasible by construction, so feasibility w.r.t.
-``V_Dubins-reachable`` is automatic; the only test is ORCA safety.
+Every primitive is Dubins-feasible by definition, so the only test is ORCA safety.
 """
 
 from __future__ import annotations
@@ -22,40 +19,86 @@ import numpy as np
 
 from ..types import Agent
 from .base import AvoidancePlanner
-
+from ..dubins import generate_primitives, propagate_primitive, PropagatedPrimitive
+from ..orca import orca_safe_velocities, satisfies_half_planes, HalfPlane
 
 class PrimitiveOrcaPlanner(AvoidancePlanner):
-    """Select the best ORCA-feasible maneuver from a discrete primitive fan.
-
-    ALGORITHM STUB — ``compute_velocity`` is not implemented yet.
+    """
+    Select the best ORCA-feasible maneuver from a set of discrete primitives.
     """
 
     name = "primitive_orca"
 
     def __init__(self, n_primitives: int = 5, responsibility: float = 0.5) -> None:
-        #: Number of maneuvers in the fan (odd -> includes "straight").
         self.n_primitives = n_primitives
-        #: Reciprocal avoidance share (0.5 = symmetric).
         self.responsibility = responsibility
+
+    @staticmethod   # method that doesn't modify itself, so don't need to pass in `self` arg
+    def aggregate_violation(
+        trajectories: PropagatedPrimitive, 
+        half_planes: list[HalfPlane]
+    ) -> float:
+        """
+        Return the violation score that least violates the safety constraint.
+
+        For this candidate trajectory, see how far its terminal velocity lies on the wrong side of every half-plane.
+
+        "Aggregate" violation scores by getting the signed distance from the half plane boundary.
+        """
+        total = 0.0
+
+        for half_plane in half_planes:
+            margin = float(
+                np.dot(
+                    trajectories.end_velocity - half_plane.point,
+                    half_plane.normal,
+                )
+            )
+            violation = max(0.0, -margin)
+            total += violation**2
+
+        return total
 
     def compute_velocity(
         self,
         ego: Agent,
-        neighbours: list[Agent],
+        neighbors: list[Agent],
         v_pref: np.ndarray,
         horizon: float,
         dt: float,
     ) -> np.ndarray:
-        # Sketch of the intended pipeline (all pieces are stubs today):
-        #   prims = dubins.generate_primitives(ego.params, self.n_primitives)
-        #   half_planes = orca.orca_safe_velocities(ego, neighbours, horizon, self.responsibility)
-        #   feasible = []
-        #   for p in prims:
-        #       roll = dubins.propagate_primitive(ego.state, p, ego.params, horizon, dt)
-        #       if orca.satisfies_half_planes(roll.end_velocity, half_planes):
-        #           feasible.append(roll)
-        #   pick roll minimising ||roll.end_velocity - v_pref||; fall back if none feasible
-        raise NotImplementedError(
-            "PrimitiveOrcaPlanner.compute_velocity: evaluate primitives against "
-            "ORCA constraints and pick the best feasible one — not implemented yet."
-        )
+        """
+        Given a primary agent (ego), its neighboring agents, and our preferred velocity,
+        compute safe velocities to enable collision avoidance!
+
+        A velocity is globally ORCA-safe only if it satisfies ALL neighboring half planes.
+        """
+
+        primitives = generate_primitives(ego.params, self.n_primitives)
+        half_planes = orca_safe_velocities(ego, neighbors, horizon, self.responsibility)
+
+        trajectories = []
+        feasible = []
+
+        for p in primitives:
+            trajectory = propagate_primitive(ego.state, p, ego.params, horizon, dt)
+            trajectories.append(trajectory)
+
+            if satisfies_half_planes(trajectory.end_velocity, half_planes):
+                feasible.append(trajectory)
+
+        if feasible:
+            # Goal is to choose the closest primitive to preferred velo;
+            # that is, minimize || roll.end_velocity - v_pref ||
+            best = min(feasible, key=lambda f: np.linalg.norm(f.end_velocity - v_pref))
+
+        else:
+            best = min(
+                trajectories,
+                key=lambda trajectories: (
+                    self.aggregate_violation(trajectories, half_planes),
+                    np.linalg.norm(trajectories.end_velocity - v_pref),
+                ),
+            )
+
+        return best.end_velocity
