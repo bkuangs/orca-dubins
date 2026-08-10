@@ -1,10 +1,10 @@
-# orca-dubins
+# ORCA for Dubins Vehicle Kinematics
 
-Protyping sandbox for ORCA under Dubins vehicle kinematics for local collision avoidance, geared towards fixed-wing aircraft swarms.
+Prototyping sandbox for optimal reciprocal collision avoidance (ORCA) under Dubins vehicle kinematics (constant forward velocity with a minimum turn radius) for local collision avoidance. This was inspired by my path planning work for fixed-wing aircraft, as I wanted to dive more deeply into swarming and local control logic.
 
 ## Idea
 
-ORCA decides which local velocities are safe; Dubins turns that into a fixed-wing-feasible maneuver. 
+ORCA decides which local velocities are safe, while Dubins must follow a fixed-wing-feasible maneuver. 
 We will constrain ORCA to the aircraft's reachable velocity set (constant speed fixed-wing) over a short horizon:
 
 ![alt text](src/orca_dubins/viz/equation.png)
