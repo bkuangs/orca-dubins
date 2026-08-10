@@ -10,10 +10,7 @@ import numpy as np
 import pytest
 
 from orca_dubins.dynamics import integrate, max_turn_rate
-from orca_dubins.planners import (
-    PreferredVelocityPlanner,
-    ReachableOrcaPlanner,
-)
+from orca_dubins.planners import PreferredVelocityPlanner
 from orca_dubins.simulation import SCENARIOS, World
 from orca_dubins.types import AircraftParams, AircraftState, vec2
 
@@ -41,16 +38,3 @@ def test_baseline_world_runs():
     for snap in history:
         for pos in snap.positions.values():
             assert pos.shape == (2,)
-
-
-def test_reachable_orca_planner_not_implemented():
-    agents = SCENARIOS["crossing"]()
-    ego, *neighbors = agents
-    with pytest.raises(NotImplementedError):
-        ReachableOrcaPlanner().compute_velocity(
-            ego,
-            neighbors,
-            ego.preferred_velocity(),
-            3.0,
-            0.1,
-        )

@@ -15,7 +15,11 @@ import argparse
 
 import matplotlib.pyplot as plt
 
-from orca_dubins.planners import PreferredVelocityPlanner, PrimitiveOrcaPlanner
+from orca_dubins.planners import (
+    PreferredVelocityPlanner,
+    PrimitiveOrcaPlanner,
+    ReachableOrcaPlanner,
+)
 from orca_dubins.simulation import SCENARIOS, World
 from orca_dubins.viz import animate, plot_trajectories
 
@@ -24,7 +28,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--planner",
-        choices=("preferred", "primitive_orca"),
+        choices=("preferred", "primitive_orca", "reachable_orca"),
         default="preferred",
     )
     parser.add_argument("--scenario", choices=sorted(SCENARIOS), default="crossing")
@@ -40,6 +44,7 @@ def main() -> None:
     planners = {
         "preferred": PreferredVelocityPlanner(),
         "primitive_orca": PrimitiveOrcaPlanner(),
+        "reachable_orca": ReachableOrcaPlanner(),
     }
     planner = planners[args.planner]
     world = World(agents=agents, planner=planner, dt=args.dt, horizon=args.horizon)

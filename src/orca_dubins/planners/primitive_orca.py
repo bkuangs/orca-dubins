@@ -1,5 +1,5 @@
 """
-Discrete, control primitive collision avoidance planner.
+Discrete, control primitive ORCA planner.
 
 We are NOT continuously optimizing over the reachable velocity sets yet. Instead:
 
@@ -41,9 +41,7 @@ class PrimitiveOrcaPlanner(AvoidancePlanner):
     ) -> float:
         """
         Return the violation score that least violates the safety constraint.
-
         For this candidate trajectory, see how far its terminal velocity lies on the wrong side of every half-plane.
-
         "Aggregate" violation scores by getting the signed distance from the half plane boundary.
         """
         total = 0.0

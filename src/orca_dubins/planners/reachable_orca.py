@@ -1,5 +1,5 @@
 """
-Kinodynamically-constrained ORCA planner.
+Continuous optimization ORCA planner.
 
 Restrict ORCA to the velocities a fixed-wing aircraft can actually 
 reach over a short horizon given its turn-rate limit. Then, choose 
@@ -15,8 +15,9 @@ import numpy as np
 
 from ..types import Agent
 from .base import AvoidancePlanner
-from ..dubins import dubins_reachable_velocities, wrap_angle, max_turn_rate, ReachableVelocityArc
-from ..orca import orca_safe_velocities, satisfies_half_planes
+from ..dubins import dubins_reachable_velocities
+from ..dynamics import max_turn_rate, wrap_angle
+from ..orca import orca_safe_velocities, satisfies_half_planes, HalfPlane
 
 
 class ReachableOrcaPlanner(AvoidancePlanner):
@@ -27,8 +28,29 @@ class ReachableOrcaPlanner(AvoidancePlanner):
     name = "reachable_orca"
 
     def __init__(self, responsibility: float = 0.5) -> None:
-        #: Reciprocal avoidance share (0.5 = symmetric).
         self.responsibility = responsibility
+
+    @staticmethod
+    def _aggregate_violation(
+        velocity: np.ndarray,
+        half_planes: list[HalfPlane],
+    ) -> float:
+        """
+        Return the violation score that least violates the safety constraint.
+        For this candidate trajectory, see how far its terminal velocity lies on the wrong side of every half-plane.
+        "Aggregate" violation scores by getting the signed distance from the half plane boundary.
+        """
+        return sum(
+            max(
+                0.0,
+                -float(np.dot(
+                    velocity - half_plane.point,
+                    half_plane.normal,
+                )),
+            ) ** 2
+            for half_plane in half_planes
+        )
+
 
     def compute_velocity(
         self,
@@ -43,6 +65,10 @@ class ReachableOrcaPlanner(AvoidancePlanner):
 
         TODO: An exact continuous optimizer can later find feasible angular intervals analytically.
         """
+        if dt <= 0.0:
+            raise ValueError("dt must be positive")
+        if horizon <= 0.0:
+            raise ValueError("horizon must be positive")
         if horizon < dt:
             raise ValueError("horizon must be at least one control timestep")
 
@@ -109,14 +135,12 @@ class ReachableOrcaPlanner(AvoidancePlanner):
         # then end of the trajectory
         selected_heading = float(np.arctan2(selected[1], selected[0]))
         heading_error = wrap_angle(selected_heading - ego.state.heading)
-        step_error = float(
-            np.clip(
-                heading_error,
-                -max_turn_rate(ego.params) * dt,
-                max_turn_rate(ego.params) * dt,
-            )
-        )
-        commanded_heading = ego.state.heading + step_error
+        turn_rate = float(np.clip(
+            heading_error / horizon,
+            -max_turn_rate(ego.params),
+            max_turn_rate(ego.params),
+        ))
+        commanded_heading = ego.state.heading + turn_rate * dt
 
         return ego.params.speed * np.array(
             [np.cos(commanded_heading), np.sin(commanded_heading)]
