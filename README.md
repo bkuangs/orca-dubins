@@ -4,7 +4,7 @@ Prototyping sandbox for optimal reciprocal collision avoidance (ORCA) under Dubi
 
 ## Idea
 
-ORCA decides which local velocities are safe, while Dubins must follow a fixed-wing-feasible maneuver. We will constrain ORCA to the aircraft's reachable velocity set (constant speed fixed-wing) over a short horizon:
+ORCA determines which local velocities are safe, while Dubins must follow a fixed-wing-feasible maneuver. We will constrain ORCA to the aircraft's reachable velocity set (constant speed fixed-wing) over a short horizon:
 
 ```math
 \mathcal{V}_{\text{Dubins-reachable}}(T_h)
@@ -22,15 +22,15 @@ V
 \right\}.
 ```
 
-We will first explore another variant that skips continuous optimization; instead, it generates a small set of control primitives (e.g. max-left, moderate-left, straight,
-moderate-right, max-right), propagating each over time horizon, testing against ORCA's
-constraints, and pick the feasible one closest to the preferred velocity.
+We will first explore a variant that skips continuous optimization; generates a small set of control primitives (e.g. max-left, moderate-left, straight, moderate-right, max-right), that propagate over time horizons and satisfy ORCA's constraints. We pick the feasible one closest to the preferred velocity.  
+
+Then, we will move on to continuous optimization. This searchs the entire Dubins-reachable heading arc for the ORCA-feasible velocity closest to the preferred velocity, rather than just a fixed/limited set of primitives.
 
 ## Results
 ### 8-body Swarm
 [![Dubins swarm simulation](src/orca_dubins/viz/dubins_swarm_circle.gif)](src/orca_dubins/viz/dubins_swarm_circle.mp4)
 
-Initial test run for proof-of-concept. 
+Initial test run for proof-of-concept (181 headings sampled). 
 
 ## Bringup
 
@@ -61,7 +61,7 @@ each other.
 - [x] Velocity obstacles + ORCA half-planes
 - [x] Dubins reachable arc over `T_h`
 - [x] Control-primitive generation + rollout
-- [x ] `ReachableOrcaPlanner.compute_velocity`
+- [x] `ReachableOrcaPlanner.compute_velocity`
 - [x] `PrimitiveOrcaPlanner.compute_velocity`
 - [ ] Metrics (min separation, collisions, path efficiency)
 - [ ] 3D extension (altitude / climb-rate)
