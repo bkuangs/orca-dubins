@@ -2,19 +2,37 @@
 
 Prototyping sandbox for optimal reciprocal collision avoidance (ORCA) under Dubins vehicle kinematics (constant forward velocity with a minimum turn radius) for local collision avoidance. This was inspired by my path planning work for fixed-wing aircraft, as I wanted to dive more deeply into swarming and local control logic.
 
-<video controls src="dubins_swarm_circle.mp4" title="Title"></video>
-
 ## Idea
 
 ORCA decides which local velocities are safe, while Dubins must follow a fixed-wing-feasible maneuver. 
 We will constrain ORCA to the aircraft's reachable velocity set (constant speed fixed-wing) over a short horizon:
 
-![alt text](src/orca_dubins/viz/equation.png)
+$$
+\mathcal{V}_{\text{Dubins-reachable}}(T_h)
+=
+\left\{
+V
+\begin{bmatrix}
+\cos(\psi_0 + \Delta\psi) \\
+\sin(\psi_0 + \Delta\psi)
+\end{bmatrix}
+\;:\;
+|\Delta\psi|
+\le
+\frac{g\tan\phi_{\max}}{V}T_h
+\right\}.
+$$
 
 We will first explore another variant that skips continuous optimization; instead, it generates a
 small set of control primitives (e.g. max-left, moderate-left, straight,
 moderate-right, max-right), propagating each over time horizon, testing against ORCA's
 constraints, and pick the feasible one closest to the preferred velocity.
+
+## Results
+### 1. 8-body Swarm
+<video controls width="400" src="src/orca_dubins/viz/dubins_swarm_circle.mp4" title="Dubins swarm simulation"></video>  
+
+Initial test run for proof-of-concept.
 
 ## Bringup
 
