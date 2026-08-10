@@ -1,31 +1,18 @@
 # orca-dubins
 
-Research prototype for ORCA + Dubins local collision avoidance, geared towards fixed-wing aircraft swarms.
+Protyping sandbox for ORCA under Dubins vehicle kinematics for local collision avoidance, geared towards fixed-wing aircraft swarms.
 
 ## Idea
 
-ORCA decides which local velocities are safe; Dubins
-turns that into a fixed-wing-feasible maneuver. A naive ORCA → Dubins
-projection can fail because while ORCA may pick a theoretically safe velocity,
-by the time the aircraft turns toward it the collision is already unavoidable. 
-Projecting onto a Dubins-feasible maneuver can invalidate ORCA's safety guarantee.
+ORCA decides which local velocities are safe; Dubins turns that into a fixed-wing-feasible maneuver. 
+We will constrain ORCA to the aircraft's reachable velocity set (constant speed fixed-wing) over a short horizon:
 
-We will instead constrain ORCA to the aircraft's reachable velocity
-set over a short horizon `T_h`:
+![alt text](src/orca_dubins/viz/equation.png)
 
-```
-v* = argmin_v || v - v_pref ||
-subject to
-    v ∈ V_ORCA-safe          (collision-avoidance half-planes)
-    v ∈ V_Dubins-reachable   (reachable heading arc under fixed-wing dynamics)
-```
-
-with the constant-speed fixed-wing model `psi_dot = g·tan(phi)/v`, `|phi| ≤ phi_max`.
-
-Another practical variant skips continuous optimization, instead generating a
-small fan of control primitives (max-left, moderate-left, straight,
-moderate-right, max-right), propagating each over `T_h`, testing against ORCA's
-constraints, and pick the feasible one closest to `v_pref`.
+We will first explore another variant that skips continuous optimization; instead, it generates a
+small set of control primitives (e.g. max-left, moderate-left, straight,
+moderate-right, max-right), propagating each over time horizon, testing against ORCA's
+constraints, and pick the feasible one closest to the preferred velocity.
 
 ## Bringup
 
