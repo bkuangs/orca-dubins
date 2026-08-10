@@ -24,6 +24,7 @@ htmlcov/
 # Rendered artifacts (animations, figures)
 *.mp4
 *.gif
+!src/orca_dubins/viz/dubins_swarm_circle.gif
 outputs/
 figures/
 

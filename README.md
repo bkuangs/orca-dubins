@@ -7,7 +7,7 @@ Prototyping sandbox for optimal reciprocal collision avoidance (ORCA) under Dubi
 ORCA decides which local velocities are safe, while Dubins must follow a fixed-wing-feasible maneuver. 
 We will constrain ORCA to the aircraft's reachable velocity set (constant speed fixed-wing) over a short horizon:
 
-$$
+```math
 \mathcal{V}_{\text{Dubins-reachable}}(T_h)
 =
 \left\{
@@ -21,7 +21,7 @@ V
 \le
 \frac{g\tan\phi_{\max}}{V}T_h
 \right\}.
-$$
+```
 
 We will first explore another variant that skips continuous optimization; instead, it generates a
 small set of control primitives (e.g. max-left, moderate-left, straight,
@@ -30,9 +30,9 @@ constraints, and pick the feasible one closest to the preferred velocity.
 
 ## Results
 ### 1. 8-body Swarm
-<video controls width="400" src="src/orca_dubins/viz/dubins_swarm_circle.mp4" title="Dubins swarm simulation"></video>  
+[![Dubins swarm simulation](src/orca_dubins/viz/dubins_swarm_circle.gif)](src/orca_dubins/viz/dubins_swarm_circle.mp4)
 
-Initial test run for proof-of-concept.
+Initial test run for proof-of-concept. Click the animation to open the MP4.
 
 ## Bringup
 
