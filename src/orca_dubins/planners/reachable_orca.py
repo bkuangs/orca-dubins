@@ -132,15 +132,17 @@ class ReachableOrcaPlanner(AvoidancePlanner):
             )
 
         # Re: above, we must return a command to execute NOW, even if we have the desired velocity at 
-        # then end of the trajectory
+        # then end of the trajectory. We choose the FASTEST dynamically feasible next step. 
+        # Spreading the correction across the full horizon reacts too slowly.
         selected_heading = float(np.arctan2(selected[1], selected[0]))
         heading_error = wrap_angle(selected_heading - ego.state.heading)
-        turn_rate = float(np.clip(
-            heading_error / horizon,
-            -max_turn_rate(ego.params),
-            max_turn_rate(ego.params),
+        max_step_turn = float(max_turn_rate(ego.params)) * dt
+        step_turn = float(np.clip(
+            heading_error,
+            -max_step_turn,
+            max_step_turn,
         ))
-        commanded_heading = ego.state.heading + turn_rate * dt
+        commanded_heading = ego.state.heading + step_turn
 
         return ego.params.speed * np.array(
             [np.cos(commanded_heading), np.sin(commanded_heading)]

@@ -28,7 +28,7 @@ def _heading(velocity: np.ndarray) -> float:
     return float(np.arctan2(velocity[1], velocity[0]))
 
 
-def test_reachable_planner_returns_next_step_of_horizon_turn():
+def test_reachable_planner_turns_toward_selected_heading_at_rate_limit():
     ego = _agent()
     planner = ReachableOrcaPlanner()
     horizon = 3.0
@@ -49,7 +49,7 @@ def test_reachable_planner_returns_next_step_of_horizon_turn():
 
     commanded_offset = wrap_angle(_heading(command) - ego.state.heading)
     assert np.linalg.norm(command) == pytest.approx(ego.params.speed)
-    assert commanded_offset == pytest.approx(0.5 * rate_limit * dt)
+    assert commanded_offset == pytest.approx(rate_limit * dt)
 
 
 def test_reachable_planner_clips_preference_to_reachable_arc():
@@ -160,3 +160,28 @@ def test_reachable_planner_runs_in_world_with_finite_constant_speed_commands():
         for agent in agents
         if (command := snapshot.commanded.get(agent.id)) is not None
     )
+
+
+@pytest.mark.parametrize("scenario", ["head_on", "crossing"])
+def test_reachable_planner_avoids_overlap_in_two_agent_scenarios(scenario: str):
+    agents = SCENARIOS[scenario]()
+    world = World(
+        agents=agents,
+        planner=ReachableOrcaPlanner(),
+        dt=0.1,
+        horizon=3.0,
+    )
+
+    history = world.run(200)
+    minimum_separation = min(
+        float(
+            np.linalg.norm(
+                snapshot.positions[agents[0].id]
+                - snapshot.positions[agents[1].id]
+            )
+        )
+        for snapshot in history
+    )
+    combined_radius = agents[0].params.radius + agents[1].params.radius
+
+    assert minimum_separation >= combined_radius

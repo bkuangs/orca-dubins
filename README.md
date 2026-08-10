@@ -2,6 +2,8 @@
 
 Prototyping sandbox for optimal reciprocal collision avoidance (ORCA) under Dubins vehicle kinematics (constant forward velocity with a minimum turn radius) for local collision avoidance. This was inspired by my path planning work for fixed-wing aircraft, as I wanted to dive more deeply into swarming and local control logic.
 
+<video controls src="dubins_swarm_circle.mp4" title="Title"></video>
+
 ## Idea
 
 ORCA decides which local velocities are safe, while Dubins must follow a fixed-wing-feasible maneuver. 
