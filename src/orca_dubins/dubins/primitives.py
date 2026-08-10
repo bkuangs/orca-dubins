@@ -161,23 +161,29 @@ def propagate_primitive(
 
 
 # -------------- METHOD 2: Real Dubins with continuous optimization --------------
+@dataclass(frozen=True)
+class ReachableVelocityArc:
+    center_heading: float
+    half_angle: float
+    speed: float
+
+
 def dubins_reachable_velocities(
     state: AircraftState,
     params: AircraftParams,
     horizon: float,
-) -> object:
-    """
-    Describe ``V_Dubins-reachable`` over ``T_h = horizon``.
+) -> ReachableVelocityArc:
+    if horizon <= 0.0:
+        raise ValueError("horizon must be positive")
+    if params.speed <= 0.0:
+        raise ValueError("speed must be positive")
 
-    Conceptually the arc of velocity vectors (constant speed, heading within the
-    reachable turn range) attainable within the horizon. Return type is left
-    open (e.g. a heading interval, a sampled arc, or a polygon) for you to
-    decide during prototyping.
+    reachable_turn = float(max_turn_rate(params)) * horizon
 
-    ALGORITHM STUB — not implemented yet.
-    """
-    raise NotImplementedError(
-        "dubins_reachable_velocities: compute the reachable heading arc — not implemented yet."
+    return ReachableVelocityArc(
+        center_heading=_wrap_angle(state.heading),
+        half_angle=min(reachable_turn, np.pi),
+        speed=params.speed,
     )
 
 
@@ -220,6 +226,18 @@ def _rotate(vector: np.ndarray, angle: float) -> np.ndarray:
         s * vector[0] + c * vector[1],
     ])
 
+
+"""
+For curves that turn in the same direction, the tangent line will touch the same outer 
+side of both circles. We can imagine this tangent as just the center-to-center vector 
+translated up/down by the turn radius.
+
+To solve for the tangent line:
+- Draw a vector from c1 to c2: d = c2 - c1
+- Normalize d to get the direction vector u
+- Rotate u by 90 degrees CCW (so that it points away from circle center towards tangent point)
+- Translate both circle centers by the same turn radius
+"""
 
 def _lsl(
     start: AircraftState,
@@ -264,6 +282,12 @@ def _rsr(
 
     return first_turn, s / turn_radius, final_turn
 
+
+"""
+For opposite direction turns, the tangent line must touch opposite poles of the circles. 
+There will be 2rho of sideways displacement between the tangents. To achieve this, we must “tilt” S 
+some angle relative to d. 
+"""
 
 def _lsr(
     start: AircraftState,
