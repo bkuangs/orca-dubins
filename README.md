@@ -1,10 +1,10 @@
 # ORCA for Dubins Vehicle
 
-Optimal reciprocal collision avoidance (ORCA) under Dubins vehicle kinematics for local collision avoidance. This was inspired by my global path planning work for fixed-wing aircraft, as I wanted to explore swarming and local control behaviors.
+Optimal reciprocal collision avoidance (ORCA) under Dubins vehicle kinematics for local collision avoidance. Inspired by my global path planning work for fixed-wing aircraft; I wanted to explore swarming and local control behaviors.
 
 ## Idea
 
-ORCA determines which local velocities are safe, while Dubins enforces a fixed-wing feasible maneuver. We will constrain ORCA to the aircraft's reachable velocity set over a short horizon:
+ORCA determines which local velocities are safe, while Dubins enforces a fixed-wing feasible maneuver. We will constrain ORCA to the aircraft's reachable velocity set over a short time horizon:
 
 ```math
 \mathcal{V}_{\text{Dubins-reachable}}(T_h)
@@ -28,10 +28,10 @@ Then, we will move on to continuous optimization. This searchs the entire Dubins
 
 ## Results
 ### 20-body Swarm
-<img src="src/orca_dubins/viz/20-body.gif" alt="20-body Dubins swarm simulation" width="500">
+<img src="src/orca_dubins/viz/20-body.gif" alt="20-body Dubins swarm simulation" width="600">
 
-We simulate a 20-body swarm with one leader following a sampled Dubins route and 
-19 followers tracking a V-shape formation. We schedule three "exchanges," which mirrors
+We simulate a 20-body swarm with one **leader** traveling a Dubins route and 
+19 **followers** tracking a V-shape formation. We schedule three "exchanges," which mirrors
 the followers' assigned V slots across the formation to create crossing conflicts.  
 
 The `X` represent assigned slots. Blinking dots signal active collision avoidance.
@@ -43,14 +43,14 @@ Requires Python ≥ 3.11 and [uv](https://docs.astral.sh/uv/):
 ```bash
 uv sync --extra dev   # create venv + install deps
 
-# Demos
+# Run demo
 uv run python examples/run_demo.py --scenario crossing --show
 uv run python examples/run_demo.py --planner primitive_orca --scenario crossing --show
 uv run python examples/run_demo.py --planner reachable_orca --scenario swarm_random --seed 7 --show
 uv run python examples/run_demo.py --planner reachable_orca --scenario swarm_formation --show
 ```
 
-The default demo uses the no-avoidance baseline, so aircraft fly through each other.
+Demos use no-avoidance, so aircraft fly through each other.
 
 ## Layout
 
