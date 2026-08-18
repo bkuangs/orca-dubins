@@ -44,12 +44,21 @@ class AircraftParams:
     max_bank_rate:
         Optional bound on how fast bank angle can change (rad/s). ``None`` means
         bank angle can be commanded instantaneously. Reserved for future use.
+    safety_margin:
+        Extra distance (m) used by collision avoidance but not physical
+        visualization.
     """
 
     speed: float
     max_bank_angle: float
     radius: float
     max_bank_rate: float | None = None
+    safety_margin: float = 0.0
+
+    @property
+    def avoidance_radius(self) -> float:
+        """Collision radius including the planning safety margin."""
+        return self.radius + self.safety_margin
 
 
 @dataclass
@@ -100,3 +109,7 @@ class Snapshot:
     headings: dict[str, float]
     # Per-agent commanded velocity chosen by the planner at this frame (optional).
     commanded: dict[str, Vector2] = field(default_factory=dict)
+    # Per-agent mission velocity before collision avoidance (optional).
+    preferred: dict[str, Vector2] = field(default_factory=dict)
+    # Per-agent dynamically reachable command without neighbors (optional).
+    nominal: dict[str, Vector2] = field(default_factory=dict)

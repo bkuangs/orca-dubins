@@ -30,7 +30,7 @@ class PrimitiveOrcaPlanner(AvoidancePlanner):
 
     name = "primitive_orca"
 
-    def __init__(self, n_primitives: int = 9, responsibility: float = 0.5) -> None:
+    def __init__(self, n_primitives: int = 5, responsibility: float = 0.5) -> None:
         self.n_primitives = n_primitives
         self.responsibility = responsibility
 

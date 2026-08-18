@@ -1,8 +1,7 @@
 # Design notes: kinodynamically-constrained ORCA + Dubins
 
-This document captures the *intent* behind the scaffold so the algorithm stubs
-can be filled in consistently. It is a research prototype for a student /
-research fixed-wing swarm system.
+This document captures the implemented design of the fixed-wing swarm research
+prototype.
 
 ## Problem
 
@@ -69,15 +68,17 @@ needs to be checked.
 |---|---|---|
 | Aircraft types / states | `orca_dubins.types` | done |
 | Constant-speed kinematics, turn-rate limit | `orca_dubins.dynamics` | done (substrate) |
-| Velocity obstacles | `orca_dubins.orca.velocity_obstacle` | **stub** |
-| ORCA half-planes / safe set | `orca_dubins.orca.orca` | **stub** |
-| Dubins reachable set | `orca_dubins.dubins.primitives.dubins_reachable_velocities` | **stub** |
-| Control primitives | `orca_dubins.dubins.primitives` | **stub** |
-| Classic Dubins shortest path | `orca_dubins.dubins.primitives.dubins_shortest_path` | **stub** |
+| Velocity obstacles | `orca_dubins.orca.velocity_obstacle` | done |
+| ORCA half-planes / safe set | `orca_dubins.orca.orca` | done |
+| Dubins reachable set | `orca_dubins.dubins.primitives.dubins_reachable_velocities` | done |
+| Control primitives | `orca_dubins.dubins.primitives` | done |
+| Classic Dubins shortest path | `orca_dubins.dubins.path` | done |
 | Planner interface | `orca_dubins.planners.base` | done |
 | No-avoidance baseline | `orca_dubins.planners.baseline` | done (runnable) |
-| Kinodynamic ORCA planner | `orca_dubins.planners.reachable_orca` | **stub** |
-| Control-primitive planner | `orca_dubins.planners.primitive_orca` | **stub** |
+| Kinodynamic ORCA planner | `orca_dubins.planners.reachable_orca` | done |
+| Control-primitive planner | `orca_dubins.planners.primitive_orca` | done |
+| Mission and formation guidance | `orca_dubins.simulation.guidance` | done |
+| Simulation metrics | `orca_dubins.simulation.metrics` | done |
 | Simulation loop / scenarios | `orca_dubins.simulation` | done |
 | Matplotlib viz | `orca_dubins.viz` | done |
 

@@ -1,4 +1,4 @@
-"""ORCA / velocity-obstacle collision-avoidance primitives (algorithm stubs)."""
+"""ORCA and velocity-obstacle collision-avoidance primitives."""
 
 from .orca import (
     HalfPlane,

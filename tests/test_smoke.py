@@ -1,8 +1,4 @@
-"""
-Smoke tests for the simulation harness and remaining algorithm stubs.
-
-Avoidance behavior is covered by focused ORCA and primitive-planner tests.
-"""
+"""Smoke tests for the dynamics and simulation harness."""
 
 from __future__ import annotations
 

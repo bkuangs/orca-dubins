@@ -7,6 +7,8 @@ Usage
 -----
     uv run python examples/run_demo.py --planner primitive_orca --scenario crossing --steps 200 --show
     uv run python examples/run_demo.py --scenario swarm_circle --save out.gif
+    uv run python examples/run_demo.py --planner reachable_orca --scenario swarm_random --seed 7 --show
+    uv run python examples/run_demo.py --planner reachable_orca --scenario swarm_formation --show
 """
 
 from __future__ import annotations
@@ -20,7 +22,17 @@ from orca_dubins.planners import (
     PrimitiveOrcaPlanner,
     ReachableOrcaPlanner,
 )
-from orca_dubins.simulation import SCENARIOS, World
+from orca_dubins.simulation import (
+    FormationGuidance,
+    PointGoalGuidance,
+    SCENARIOS,
+    World,
+    assigned_slot_rmse,
+    avoidance_intervention_count,
+    leader_cross_track_rmse,
+    minimum_pairwise_separation,
+    swarm_formation_guidance,
+)
 from orca_dubins.viz import animate, plot_trajectories
 
 
@@ -32,7 +44,8 @@ def main() -> None:
         default="preferred",
     )
     parser.add_argument("--scenario", choices=sorted(SCENARIOS), default="crossing")
-    parser.add_argument("--steps", type=int, default=200)
+    parser.add_argument("--seed", type=int, default=0, help="random scenario seed")
+    parser.add_argument("--steps", type=int, default=None)
     parser.add_argument("--dt", type=float, default=0.1)
     parser.add_argument("--horizon", type=float, default=3.0)
     parser.add_argument("--save", type=str, default=None, help="path to .gif/.mp4")
@@ -40,22 +53,76 @@ def main() -> None:
     parser.add_argument("--static", action="store_true", help="static trajectory plot instead of animation")
     args = parser.parse_args()
 
-    agents = SCENARIOS[args.scenario]()
+    if args.scenario in (
+        "swarm_random",
+        "swarm_formation",
+    ):
+        agents = SCENARIOS[args.scenario](seed=args.seed)
+    else:
+        agents = SCENARIOS[args.scenario]()
+    guidance = (
+        swarm_formation_guidance()
+        if args.scenario == "swarm_formation"
+        else PointGoalGuidance()
+    )
     planners = {
         "preferred": PreferredVelocityPlanner(),
         "primitive_orca": PrimitiveOrcaPlanner(),
         "reachable_orca": ReachableOrcaPlanner(),
     }
     planner = planners[args.planner]
-    world = World(agents=agents, planner=planner, dt=args.dt, horizon=args.horizon)
-    world.run(args.steps)
+    world = World(
+        agents=agents,
+        planner=planner,
+        guidance=guidance,
+        record_diagnostics=True,
+        dt=args.dt,
+        horizon=args.horizon,
+    )
+    steps = args.steps if args.steps is not None else (
+        600 if args.scenario == "swarm_formation" else 200
+    )
+    if isinstance(guidance, FormationGuidance):
+        world.run_until_complete(steps)
+    else:
+        world.run(steps)
+
+    print(
+        f"minimum separation: "
+        f"{minimum_pairwise_separation(world.history):.2f} m"
+    )
+    print(
+        f"avoidance interventions: "
+        f"{avoidance_intervention_count(world.history)} agent-frames"
+    )
+    if isinstance(guidance, FormationGuidance):
+        print(
+            f"leader cross-track RMSE: "
+            f"{leader_cross_track_rmse(world.history, guidance.leader_guidance):.2f} m"
+        )
+        print(
+            f"assigned-slot RMSE: "
+            f"{assigned_slot_rmse(world.history, guidance, len(world.history) // 4):.2f} m"
+        )
+        print(f"mission complete: {world.all_arrived()}")
 
     radius = {a.id: a.params.radius for a in agents}
 
     if args.static:
-        plot_trajectories(world.history, agents=agents, title=f"{args.scenario} ({planner.name})")
+        plot_trajectories(
+            world.history,
+            agents=agents,
+            title=f"{args.scenario} ({planner.name})",
+            guidance=guidance,
+        )
     else:
-        anim = animate(world.history, agents=agents, radius=radius, title=f"{args.scenario} ({planner.name})")
+        anim = animate(
+            world.history,
+            agents=agents,
+            radius=radius,
+            title=f"{args.scenario} ({planner.name})",
+            guidance=guidance,
+        )
         if args.save:
             anim.save(args.save)
             print(f"saved animation to {args.save}")

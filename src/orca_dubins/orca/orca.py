@@ -76,7 +76,10 @@ def orca_half_plane(
         raise ValueError("Invalid time step.")
     
     rel_position = neighbor.state.position - ego.state.position
-    combined_radius = ego.params.radius + neighbor.params.radius
+    combined_radius = (
+        ego.params.avoidance_radius
+        + neighbor.params.avoidance_radius
+    )
     distance = float(np.linalg.norm(rel_position))
 
     ego_velocity = ego.state.velocity(ego.params.speed)
